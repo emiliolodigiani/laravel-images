@@ -33,7 +33,9 @@ class Img extends Component
         }
 
         $this->srcset = implode(', ', $srcsetParts);
-        $this->fallback = $largestSized ?? asset($this->src);
+
+        $originalsUrl = config("images.sources.{$this->source}.originals_url", '');
+        $this->fallback = $largestSized ?? asset(ltrim("$originalsUrl/{$this->src}", '/'));
     }
 
     public function render(): View

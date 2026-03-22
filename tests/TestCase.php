@@ -16,6 +16,7 @@ abstract class TestCase extends BaseTestCase
     {
         $app['config']->set('images.sources.default', [
             'originals' => __DIR__.'/fixtures/originals',
+            'originals_url' => '/images',
             'sizes' => __DIR__.'/fixtures/sizes',
             'url' => '/images/sizes/{width}',
         ]);

@@ -26,15 +26,17 @@ return [
     'widths' => [400, 800, 1200, 1920, 2500],
     'sources' => [
         'default' => [
-            'originals' => public_path('images'),
-            'sizes'     => public_path('images/sizes'),
-            'url'       => '/images/sizes/{width}',
+            'originals'     => public_path('images'),
+            'originals_url' => '/images',
+            'sizes'         => public_path('images/sizes'),
+            'url'           => '/images/sizes/{width}',
         ],
         // Add more sources as needed:
-        'guides' => [
-            'originals' => storage_path('app/public/guides'),
-            'sizes'     => storage_path('app/public/guide-sizes'),
-            'url'       => '/images/sizes/{width}/guides',
+        'blog' => [
+            'originals'     => storage_path('app/public/blog'),
+            'originals_url' => '/storage/blog',
+            'sizes'         => storage_path('app/public/blog-sizes'),
+            'url'           => '/storage/blog-sizes/{width}',
         ],
     ],
 ];
@@ -42,6 +44,7 @@ return [
 
 Each source defines:
 - **originals** — absolute path to the directory with original images
+- **originals_url** — public URL prefix for originals (used as fallback when no resized versions exist)
 - **sizes** — absolute path where resized versions are stored (subdirectories per width)
 - **url** — public URL pattern for srcset (`{width}` is replaced with the actual value)
 
