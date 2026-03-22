@@ -209,6 +209,90 @@ class ImageResizer
     }
 
     /**
+     * Upload a file to a source and generate resized versions.
+     * Returns the absolute path to the saved file.
+     */
+    public static function upload(\Illuminate\Http\UploadedFile $file, string $source = 'default', ?string $filename = null): string
+    {
+        $sourceConfig = config("images.sources.{$source}");
+        if (! $sourceConfig) {
+            throw new \InvalidArgumentException("Image source '{$source}' is not configured.");
+        }
+
+        $filename = $filename ?? $file->getClientOriginalName();
+        $dir = $sourceConfig['originals'];
+
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $file->move($dir, $filename);
+
+        $absolutePath = "$dir/$filename";
+        self::resize($absolutePath);
+
+        return $absolutePath;
+    }
+
+    /**
+     * Store raw content (e.g. downloaded from a URL) to a source and generate resized versions.
+     * Returns the absolute path to the saved file.
+     */
+    public static function store(string $content, string $source, string $filename): string
+    {
+        $sourceConfig = config("images.sources.{$source}");
+        if (! $sourceConfig) {
+            throw new \InvalidArgumentException("Image source '{$source}' is not configured.");
+        }
+
+        $dir = $sourceConfig['originals'];
+
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $absolutePath = "$dir/$filename";
+        file_put_contents($absolutePath, $content);
+
+        self::resize($absolutePath);
+
+        return $absolutePath;
+    }
+
+    /**
+     * Delete an image and all its resized versions from a source.
+     */
+    public static function delete(string $filename, string $source = 'default'): bool
+    {
+        $sourceConfig = config("images.sources.{$source}");
+        if (! $sourceConfig) {
+            return false;
+        }
+
+        $originalPath = $sourceConfig['originals'].'/'.$filename;
+
+        if (! file_exists($originalPath)) {
+            return false;
+        }
+
+        unlink($originalPath);
+
+        $basename = pathinfo($filename, PATHINFO_FILENAME);
+        $widths = config('images.widths', [400, 800, 1200, 1920, 2500]);
+
+        foreach ($widths as $w) {
+            $resized = $sourceConfig['sizes']."/$w/$basename.webp";
+            if (file_exists($resized)) {
+                unlink($resized);
+            }
+        }
+
+        self::writeManifest();
+
+        return true;
+    }
+
+    /**
      * Detect which configured source an absolute path belongs to.
      *
      * @return array{originals: string, sizes: string, url: string}|null

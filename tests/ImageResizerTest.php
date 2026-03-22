@@ -3,10 +3,17 @@
 use EmilioLodigiani\LaravelImages\ImageResizer;
 
 beforeEach(function () {
+    // Ensure the fixture image exists (upload tests may have moved it)
+    $fixture = __DIR__.'/fixtures/originals/test-photo.jpg';
+    $master = __DIR__.'/fixtures/test-photo-master.jpg';
+    if (! file_exists($fixture) && file_exists($master)) {
+        copy($master, $fixture);
+    }
+
     // Clean up any previously generated sizes
     $sizesDir = __DIR__.'/fixtures/sizes';
     if (is_dir($sizesDir)) {
-        foreach (glob("$sizesDir/*/test-photo.webp") as $file) {
+        foreach (glob("$sizesDir/*/*.webp") as $file) {
             unlink($file);
         }
     }
@@ -107,3 +114,73 @@ it('returns empty widths for unknown basename', function () {
     $widths = ImageResizer::availableWidths('nonexistent-image', 'default');
     expect($widths)->toBe([]);
 });
+
+it('uploads a file and generates resized versions', function () {
+    // Copy fixture so move() doesn't destroy the original
+    $tmpPath = __DIR__.'/fixtures/originals/upload-test.jpg';
+    copy(__DIR__.'/fixtures/originals/test-photo.jpg', $tmpPath);
+
+    $file = new \Illuminate\Http\UploadedFile($tmpPath, 'uploaded.jpg', 'image/jpeg', null, true);
+
+    $path = ImageResizer::upload($file, 'default', 'uploaded.jpg');
+
+    expect(file_exists($path))->toBeTrue();
+    expect(file_exists(__DIR__.'/fixtures/sizes/400/uploaded.webp'))->toBeTrue();
+    expect(file_exists(__DIR__.'/fixtures/sizes/800/uploaded.webp'))->toBeTrue();
+
+    // Clean up
+    @unlink(__DIR__.'/fixtures/originals/uploaded.jpg');
+    foreach (config('images.widths') as $w) {
+        @unlink(__DIR__."/fixtures/sizes/$w/uploaded.webp");
+    }
+    ImageResizer::writeManifest();
+});
+
+it('stores raw content and generates resized versions', function () {
+    $content = file_get_contents(__DIR__.'/fixtures/originals/test-photo.jpg');
+
+    $path = ImageResizer::store($content, 'default', 'stored.jpg');
+
+    expect(file_exists($path))->toBeTrue();
+    expect(file_exists(__DIR__.'/fixtures/sizes/400/stored.webp'))->toBeTrue();
+
+    // Clean up
+    @unlink(__DIR__.'/fixtures/originals/stored.jpg');
+    foreach (config('images.widths') as $w) {
+        @unlink(__DIR__."/fixtures/sizes/$w/stored.webp");
+    }
+    ImageResizer::writeManifest();
+});
+
+it('deletes an image and all its resized versions', function () {
+    // First create a file to delete
+    $content = file_get_contents(__DIR__.'/fixtures/originals/test-photo.jpg');
+    ImageResizer::store($content, 'default', 'to-delete.jpg');
+
+    expect(file_exists(__DIR__.'/fixtures/originals/to-delete.jpg'))->toBeTrue();
+    expect(file_exists(__DIR__.'/fixtures/sizes/400/to-delete.webp'))->toBeTrue();
+
+    $result = ImageResizer::delete('to-delete.jpg', 'default');
+
+    expect($result)->toBeTrue();
+    expect(file_exists(__DIR__.'/fixtures/originals/to-delete.jpg'))->toBeFalse();
+    expect(file_exists(__DIR__.'/fixtures/sizes/400/to-delete.webp'))->toBeFalse();
+});
+
+it('returns false when deleting non-existent image', function () {
+    $result = ImageResizer::delete('nonexistent.jpg', 'default');
+    expect($result)->toBeFalse();
+});
+
+it('throws on upload to invalid source', function () {
+    $tmpPath = __DIR__.'/fixtures/originals/invalid-source-test.jpg';
+    copy(__DIR__.'/fixtures/originals/test-photo.jpg', $tmpPath);
+
+    $file = new \Illuminate\Http\UploadedFile($tmpPath, 'test.jpg', 'image/jpeg', null, true);
+
+    try {
+        ImageResizer::upload($file, 'nonexistent');
+    } finally {
+        @unlink($tmpPath);
+    }
+})->throws(\InvalidArgumentException::class);
