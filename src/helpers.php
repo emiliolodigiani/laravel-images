@@ -58,11 +58,9 @@ if (! function_exists('responsive_images_detect_source')) {
         $sources = config('images.sources', []);
 
         foreach ($sources as $name => $sourceConfig) {
-            // Check if the URL path contains a segment that matches this source
-            $originalsDir = $sourceConfig['originals'];
-            $relativePath = str_replace(public_path(), '', $originalsDir);
+            $originalsUrl = $sourceConfig['originals_url'] ?? '';
 
-            if (str_contains($urlPath, $relativePath)) {
+            if ($originalsUrl && str_starts_with($urlPath, $originalsUrl)) {
                 return $name;
             }
         }
