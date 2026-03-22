@@ -72,13 +72,43 @@ This transforms all `<img>` tags in the HTML to responsive versions with `srcset
 
 ### Resize on upload
 
-Call `ImageResizer::resize()` after saving an uploaded file:
+**Important:** You must call `ImageResizer::resize()` after every image upload. The package does not hook into upload events automatically — it is your responsibility to call it in every upload flow (controllers, Livewire components, MCP tools, API endpoints, etc.).
+
+The `resize()` method automatically detects which source the image belongs to based on its absolute path, so you don't need to specify the source name.
 
 ```php
 use EmilioLodigiani\LaravelImages\ImageResizer;
 
-$path = $request->file('image')->store('images', 'public');
+// In a controller
+$file = $request->file('image');
+$file->move(public_path('images'), $file->getClientOriginalName());
+ImageResizer::resize(public_path('images/' . $file->getClientOriginalName()));
+
+// Or using Laravel's store() method
+$path = $request->file('image')->store('blog', 'public');
 ImageResizer::resize(storage_path("app/public/$path"));
+```
+
+### Deleting images
+
+When deleting an image, remove the resized versions too and rebuild the manifest:
+
+```php
+use EmilioLodigiani\LaravelImages\ImageResizer;
+
+// Delete the original
+unlink($originalPath);
+
+// Delete resized versions
+$basename = pathinfo($originalPath, PATHINFO_FILENAME);
+foreach (config('images.widths') as $w) {
+    $resized = config('images.sources.default.sizes') . "/$w/$basename.webp";
+    if (file_exists($resized)) {
+        unlink($resized);
+    }
+}
+
+ImageResizer::writeManifest();
 ```
 
 ### Batch resize
