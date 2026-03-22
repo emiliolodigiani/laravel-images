@@ -70,28 +70,27 @@ For rich text content with embedded `<img>` tags:
 
 This transforms all `<img>` tags in the HTML to responsive versions with `srcset`, `sizes`, and `loading="lazy"`.
 
-### Uploading images
+### Resize after upload
 
-Use `ImageResizer::upload()` to save a file and generate all resized versions in one call. This is the recommended way to handle uploads — it ensures resized versions are always generated.
+The package does not handle file storage — your app saves files using Laravel's filesystem (Storage, Livewire `storeAs()`, controller `store()`, etc.). After saving, call `ImageResizer::resize()` with the absolute path to generate all resized versions.
+
+The `resize()` method automatically detects which configured source the file belongs to based on its path.
 
 ```php
 use EmilioLodigiani\LaravelImages\ImageResizer;
 
-// From a controller — saves the file and generates all sizes
-$path = ImageResizer::upload($request->file('image'), 'default', 'photo.jpg');
+// Livewire component
+$this->photo->storeAs('', $filename, 'my-disk');
+ImageResizer::resize(storage_path('app/public/photos/' . $filename));
 
-// From a Livewire component
-$path = ImageResizer::upload($this->photo, 'blog', $filename);
+// Controller
+$request->file('image')->store('photos', 'public');
+ImageResizer::resize(storage_path('app/public/photos/' . $filename));
+
+// Downloaded from URL (e.g. MCP tool)
+file_put_contents($path, Http::get($url)->body());
+ImageResizer::resize($path);
 ```
-
-For content downloaded from a URL (e.g. in MCP tools or API integrations), use `ImageResizer::store()`:
-
-```php
-$response = Http::get($imageUrl);
-$path = ImageResizer::store($response->body(), 'default', 'downloaded.jpg');
-```
-
-Both methods return the absolute path to the saved file.
 
 ### Deleting images
 
@@ -99,15 +98,6 @@ Use `ImageResizer::delete()` to remove an image and all its resized versions:
 
 ```php
 ImageResizer::delete('photo.jpg', 'default');
-```
-
-### Low-level resize
-
-If you handle file storage yourself, call `resize()` after saving. It detects the source automatically from the absolute path:
-
-```php
-$file->move(public_path('images'), 'photo.jpg');
-ImageResizer::resize(public_path('images/photo.jpg'));
 ```
 
 ### Batch resize
