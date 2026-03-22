@@ -56,15 +56,19 @@ if (! function_exists('responsive_images_detect_source')) {
     function responsive_images_detect_source(string $urlPath): string
     {
         $sources = config('images.sources', []);
+        $bestMatch = 'default';
+        $bestLength = 0;
 
         foreach ($sources as $name => $sourceConfig) {
             $originalsUrl = $sourceConfig['originals_url'] ?? '';
+            $len = strlen($originalsUrl);
 
-            if ($originalsUrl && str_starts_with($urlPath, $originalsUrl)) {
-                return $name;
+            if ($originalsUrl && $len > $bestLength && str_starts_with($urlPath, $originalsUrl)) {
+                $bestMatch = $name;
+                $bestLength = $len;
             }
         }
 
-        return 'default';
+        return $bestMatch;
     }
 }
