@@ -18,8 +18,8 @@ class ImageResizer
     public static function availableWidths(string $basename, string $source = 'default'): array
     {
         if (self::$manifest === null) {
-            $path = storage_path('framework/image-sizes.php');
-            self::$manifest = is_file($path) ? require $path : [];
+            $path = storage_path('framework/image-sizes.json');
+            self::$manifest = is_file($path) ? json_decode(file_get_contents($path), true) : [];
         }
 
         return self::$manifest[$source][$basename] ?? [];
@@ -60,19 +60,9 @@ class ImageResizer
             }
         }
 
-        $path = storage_path('framework/image-sizes.php');
+        $path = storage_path('framework/image-sizes.json');
 
-        file_put_contents($path, '<?php return '.var_export($manifest, true).';');
-
-        // Invalidate OPcache for both the symlinked and real paths
-        // (zero-downtime deploys use symlinks, OPcache may cache either path)
-        if (function_exists('opcache_invalidate')) {
-            opcache_invalidate($path, true);
-            $realPath = realpath($path);
-            if ($realPath && $realPath !== $path) {
-                opcache_invalidate($realPath, true);
-            }
-        }
+        file_put_contents($path, json_encode($manifest, JSON_THROW_ON_ERROR));
 
         self::$manifest = null;
     }
