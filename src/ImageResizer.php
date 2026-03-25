@@ -199,6 +199,29 @@ class ImageResizer
     }
 
     /**
+     * Delete all resized variants across all sources. Returns the number of files deleted.
+     */
+    public static function deleteAllVariants(): int
+    {
+        $count = 0;
+        $sources = config('images.sources', []);
+
+        foreach ($sources as $sourceConfig) {
+            $sizesDir = $sourceConfig['sizes'];
+            if (! is_dir($sizesDir)) {
+                continue;
+            }
+
+            foreach (glob("{$sizesDir}/*/*.webp") as $file) {
+                unlink($file);
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
      * Delete an image and all its resized versions from a source.
      */
     public static function delete(string $filename, string $source = 'default'): bool
